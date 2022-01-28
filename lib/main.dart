@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
 
 void main() => runApp(MaterialApp(
@@ -49,24 +50,37 @@ class _HomeState extends State<Home> {
     var url = Uri.parse(
         'https://api.openweathermap.org/data/2.5/weather?q=$city&units=$units&appid=$apikey');
 
-    http.Response response = await http.get(url);
-    var results = jsonDecode(response.body);
-    setState(() {
-      if (locationController.text.toString() == "") {
-        mainCity = "Tampere";
-      } else {
-        mainCity = locationController.text.toString().capitalize();
-      }
+    final http.Response response = await http.get(url);
+    final Map results = json.decode(response.body);
 
-      //mainCity = locationController.text;
-      temp = results['main']['temp'];
-      description = results['weather'][0]['description'];
-      currently = results['weather'][0]['main'];
-      humidity = results['main']['humidity'];
-      windSpeed = results['wind']['speed'];
-    });
+    if (response.statusCode == 200) {
+      setState(() {
+        if (locationController.text.toString() == "") {
+          mainCity = "Tampere";
+        } else {
+          mainCity = locationController.text.toString().capitalize();
+        }
+
+        temp = results['main']['temp'];
+        description = results['weather'][0]['description'];
+        currently = results['weather'][0]['main'];
+        humidity = results['main']['humidity'];
+        windSpeed = results['wind']['speed'];
+      });
+    } else {
+      var cityname = locationController.text.toString().capitalize();
+      setState(() {
+        mainCity = '"$cityname"';
+        temp = 0;
+        description = "--";
+        currently = results['message'];
+        humidity = 0;
+        windSpeed = 0;
+      });
+    }
   }
 
+  @override
   @override
   void initState() {
     super.initState();
@@ -158,7 +172,7 @@ class _HomeState extends State<Home> {
             ),
           ),
           Padding(
-            padding: EdgeInsets.all(16.0),
+            padding: EdgeInsets.only(bottom: 50.0, left: 25, right: 25),
             child: Row(
               children: <Widget>[
                 Expanded(
@@ -170,6 +184,10 @@ class _HomeState extends State<Home> {
                       labelText: 'Location',
                     ),
                   ),
+                ),
+                SizedBox(
+                  width: 10,
+                  height: 10,
                 ),
                 Expanded(
                     child: SizedBox(
