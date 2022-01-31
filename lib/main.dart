@@ -1,4 +1,4 @@
-// ignore_for_file: prefer_const_constructors
+// ignore_for_file: prefer_const_constructors, unnecessary_brace_in_string_interps
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -33,22 +33,56 @@ class _HomeState extends State<Home> {
   var humidity;
   var windSpeed;
   var mainCity = "tampere";
+  late Position _currentPosition;
   final locationController = TextEditingController();
 
   @override
   void dispose() {
-    // Clean up the controller when the widget is removed from the
-    // widget tree.
     locationController.dispose();
     super.dispose();
   }
 
-  Future getWeather(aLocation, aUnits) async {
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error(
+          'Location permissions are permanently denied, we cannot request permissions.');
+    }
+
+    _currentPosition = await Geolocator.getCurrentPosition();
+    String lat = _currentPosition.latitude.toString();
+    String lon = _currentPosition.longitude.toString();
+    getWeather(null, "metric", lat, lon);
+
+    return _currentPosition;
+  }
+
+  Future getWeather(aLocation, aUnits, lat, lon) async {
     String city = aLocation.toString();
     String units = aUnits == null ? 'metric' : aUnits.toString();
-    String apikey = '';
+    String apikey = '22ba8ea1a4113ec446bbb83bccc40c5c';
+
     var url = Uri.parse(
         'https://api.openweathermap.org/data/2.5/weather?q=$city&units=$units&appid=$apikey');
+    if (lat != null && lon != null) {
+      url = Uri.parse(
+          'https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=$units&appid=$apikey');
+    }
 
     final http.Response response = await http.get(url);
     final Map results = json.decode(response.body);
@@ -66,9 +100,13 @@ class _HomeState extends State<Home> {
         currently = results['weather'][0]['main'];
         humidity = results['main']['humidity'];
         windSpeed = results['wind']['speed'];
+        if (lat != null && lon != null) {
+          mainCity = results['name'];
+        }
       });
     } else {
       var cityname = locationController.text.toString().capitalize();
+
       setState(() {
         mainCity = '"$cityname"';
         temp = 0;
@@ -81,10 +119,10 @@ class _HomeState extends State<Home> {
   }
 
   @override
-  @override
-  void initState() {
+  initState() {
     super.initState();
-    getWeather("tampere", "metric");
+
+    getWeather("tampere", "metric", null, null);
   }
 
   @override
@@ -172,10 +210,11 @@ class _HomeState extends State<Home> {
             ),
           ),
           Padding(
-            padding: EdgeInsets.only(bottom: 50.0, left: 25, right: 25),
+            padding: EdgeInsets.only(bottom: 70.0, left: 25, right: 25),
             child: Row(
               children: <Widget>[
                 Expanded(
+                  flex: 3,
                   child: TextFormField(
                     controller: locationController,
                     obscureText: false,
@@ -190,16 +229,41 @@ class _HomeState extends State<Home> {
                   height: 10,
                 ),
                 Expanded(
+                    flex: 2,
                     child: SizedBox(
-                  width: 50,
-                  height: 45,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      getWeather(locationController.text, null);
-                    },
-                    child: const Text('Set Location'),
-                  ),
-                )),
+                      width: 50,
+                      height: 45,
+                      child: ElevatedButton(
+                        onPressed: locationController.text.isNotEmpty
+                            ? () {
+                                FocusScopeNode currentFocus =
+                                    FocusScope.of(context);
+                                if (!currentFocus.hasPrimaryFocus) {
+                                  currentFocus.unfocus();
+                                }
+                                getWeather(
+                                    locationController.text, null, null, null);
+                              }
+                            : null,
+                        child: const Text('Set Location'),
+                      ),
+                    )),
+                SizedBox(
+                  width: 10,
+                  height: 10,
+                ),
+                Expanded(
+                    flex: 1,
+                    child: SizedBox(
+                      width: 50,
+                      height: 45,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          _determinePosition();
+                        },
+                        child: FaIcon(FontAwesomeIcons.searchLocation),
+                      ),
+                    )),
               ],
             ),
           ),
