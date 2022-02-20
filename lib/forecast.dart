@@ -1,30 +1,28 @@
 // ignore_for_file: prefer_const_constructors, unnecessary_brace_in_string_interps
 
-import 'package:basic_weather_app/weather.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 // ignore: import_of_legacy_library_into_null_safe
 import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
-import 'forecast.dart';
 
-class Weather extends StatefulWidget {
-  const Weather({Key? key}) : super(key: key);
+class Forecast extends StatefulWidget {
+  const Forecast({Key? key, String? data}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
-    return _WeatherState();
+    return _ForecastState();
   }
 }
 
 extension StringExtension on String {
-  String capitalizeText() {
+  String capitalize() {
     return "${this[0].toUpperCase()}${this.substring(1).toLowerCase()}";
   }
 }
 
-class _WeatherState extends State<Weather> {
+class _ForecastState extends State<Forecast> {
   var temp;
   var description;
   var currently;
@@ -34,24 +32,14 @@ class _WeatherState extends State<Weather> {
   late Position _currentPosition;
   late TextEditingController _inputController;
   bool isButtonActive = false;
-
-  String topBarText = 'Current Weather';
   @override
   void initState() {
     super.initState();
     getWeather(mainCity, null, null, null);
-
     _inputController = TextEditingController();
     _inputController.addListener(() {
       final isButtonActive = _inputController.text.isNotEmpty;
       setState(() => this.isButtonActive = isButtonActive);
-    });
-  }
-
-  int _selectedIndex = 0;
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
     });
   }
 
@@ -105,13 +93,13 @@ class _WeatherState extends State<Weather> {
         if (_inputController.text.toString() == "") {
           mainCity = "Tampere";
         } else {
-          mainCity = _inputController.text.toString().capitalizeText();
+          mainCity = _inputController.text.toString().capitalize();
         }
 
         temp = results['main']['temp'];
         description =
-            results['weather'][0]['description'].toString().capitalizeText();
-        currently = results['weather'][0]['main'].toString().capitalizeText();
+            results['weather'][0]['description'].toString().capitalize();
+        currently = results['weather'][0]['main'].toString().capitalize();
         humidity = results['main']['humidity'];
         windSpeed = results['wind']['speed'];
         if (lat != null && lon != null) {
@@ -119,7 +107,7 @@ class _WeatherState extends State<Weather> {
         }
       });
     } else {
-      var cityname = _inputController.text.toString().capitalizeText();
+      var cityname = _inputController.text.toString().capitalize();
 
       setState(() {
         mainCity = '"$cityname"';
@@ -221,9 +209,6 @@ class _WeatherState extends State<Weather> {
                 ],
               ),
             ),
-          ),
-          Row(
-            children: [],
           ),
           Padding(
             padding: EdgeInsets.only(bottom: 70.0, left: 25, right: 25),
