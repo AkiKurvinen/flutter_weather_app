@@ -7,7 +7,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 // ignore: import_of_legacy_library_into_null_safe
 import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
-import 'forecast.dart';
+
+import 'apikey.dart';
 
 class Weather extends StatefulWidget {
   const Weather({Key? key}) : super(key: key);
@@ -88,7 +89,7 @@ class _WeatherState extends State<Weather> {
   Future getWeather(aLocation, aUnits, lat, lon) async {
     String city = aLocation.toString();
     String units = aUnits == null ? 'metric' : aUnits.toString();
-    String apikey = '22ba8ea1a4113ec446bbb83bccc40c5c';
+    String apikey = getApikey();
 
     var url = Uri.parse(
         'https://api.openweathermap.org/data/2.5/weather?q=$city&units=$units&appid=$apikey');

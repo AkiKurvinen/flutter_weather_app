@@ -1,11 +1,16 @@
 // ignore_for_file: prefer_const_constructors, unnecessary_brace_in_string_interps
 
+import 'dart:html';
+
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 // ignore: import_of_legacy_library_into_null_safe
 import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
+import 'apikey.dart';
+import 'dart:developer';
 
 class Forecast extends StatefulWidget {
   const Forecast({Key? key, String? data}) : super(key: key);
@@ -22,6 +27,29 @@ extension StringExtension on String {
   }
 }
 
+class WeatherObject {
+  String? date;
+  double? temp;
+  String? weather;
+  int? humidity;
+  double? wind;
+  String? icon;
+
+  WeatherObject(
+      this.date, this.temp, this.weather, this.humidity, this.wind, this.icon);
+
+  factory WeatherObject.fromJson(dynamic json) {
+    Fluttertoast.showToast(msg: 'factory');
+    return WeatherObject(
+        json['dt_txt'] as String,
+        json['main']['temp'] as double,
+        json['weather'][0]['description'] as String,
+        json['main']['humidity'] as int,
+        json['wind']['speed'] as double,
+        json['weather'][0]['icon'] as String);
+  }
+}
+
 class _ForecastState extends State<Forecast> {
   var temp;
   var description;
@@ -32,10 +60,34 @@ class _ForecastState extends State<Forecast> {
   late Position _currentPosition;
   late TextEditingController _inputController;
   bool isButtonActive = false;
+
+  late List<dynamic> entries = [
+    /*
+    WeatherObject(
+      date: '10.02.2022',
+      temp: -3.0,
+      weather: 'Clouds?',
+      humidity: 90,
+      wind: 5,
+      icon: '01d',
+    ),
+    WeatherObject(
+      date: '11.02.2022',
+      temp: -4.0,
+      weather: 'Rain?',
+      humidity: 100,
+      wind: 6,
+      icon: '01d',
+    ),
+    */
+  ];
+
+  final List<int> colorCodes = <int>[600, 500, 400, 300, 200, 100];
+
   @override
   void initState() {
     super.initState();
-    getWeather(mainCity, null, null, null);
+    getWeather(mainCity, "metric", null, null);
     _inputController = TextEditingController();
     _inputController.addListener(() {
       final isButtonActive = _inputController.text.isNotEmpty;
@@ -74,37 +126,90 @@ class _ForecastState extends State<Forecast> {
   }
 
   Future getWeather(aLocation, aUnits, lat, lon) async {
-    String city = aLocation.toString();
-    String units = aUnits == null ? 'metric' : aUnits.toString();
-    String apikey = '22ba8ea1a4113ec446bbb83bccc40c5c';
+    String city = 'tampere';
 
-    var url = Uri.parse(
-        'https://api.openweathermap.org/data/2.5/weather?q=$city&units=$units&appid=$apikey');
+    if (aLocation != '') {
+      city = aLocation.toString();
+    }
+    String units = 'metric';
+    String apikey = getApikey();
+
+    var url;
+
     if (lat != null && lon != null) {
       url = Uri.parse(
-          'https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=$units&appid=$apikey');
-    }
+          'https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=$apikey');
+    } else if (mainCity != '') {
+      var cityCoordUrl = Uri.parse(
+          'https://api.openweathermap.org/geo/1.0/direct?q=$city&limit=1&appid=$apikey');
 
+      final http.Response response = await http.get(cityCoordUrl);
+      var results;
+      var decodeSucceeded = false;
+      try {
+        results = json.decode(response.body);
+        decodeSucceeded = true;
+      } on FormatException catch (e) {
+        Fluttertoast.showToast(
+          msg: 'catch JSON error ',
+        );
+      }
+
+      // final Map results = json.decode(response.body.toString());
+      var cityLat = results[0]['lon'].toString();
+      var cityLon = results[0]['lat'].toString();
+
+      if (response.statusCode == 200) {
+        url = Uri.parse(
+            'https://api.openweathermap.org/data/2.5/forecast?lat=${cityLat}&lon=${cityLon}&units=metric&appid=$apikey');
+      } else {
+        var cityname = _inputController.text.toString().capitalize();
+
+        setState(() {
+          mainCity = '"$cityname"';
+          temp = 0;
+          description = "--";
+          currently = results['message'];
+          humidity = 0;
+          windSpeed = 0;
+        });
+      }
+    } else {
+      url = Uri.parse('https://api.openweathermap.org/data/2.5/forecast');
+    }
     final http.Response response = await http.get(url);
     final Map results = json.decode(response.body);
 
     if (response.statusCode == 200) {
       setState(() {
         if (_inputController.text.toString() == "") {
-          mainCity = "Tampere";
+          mainCity = results['city']['name'].toString();
         } else {
           mainCity = _inputController.text.toString().capitalize();
         }
 
+//   final List<WeatherObject> entries = [
+
+        try {
+          List<dynamic> newEntries = results['list']
+              .map((json) => WeatherObject.fromJson(json))
+              .toList();
+          entries = newEntries;
+        } catch (e) {
+          Fluttertoast.showToast(msg: e.toString());
+        }
+
+        /*
         temp = results['main']['temp'];
         description =
-            results['weather'][0]['description'].toString().capitalize();
+        results['weather'][0]['description'].toString().capitalize();
         currently = results['weather'][0]['main'].toString().capitalize();
         humidity = results['main']['humidity'];
         windSpeed = results['wind']['speed'];
         if (lat != null && lon != null) {
-          mainCity = results['name'];
+          mainCity = results['city']['name'].toString();
         }
+        */
       });
     } else {
       var cityname = _inputController.text.toString().capitalize();
@@ -131,84 +236,52 @@ class _ForecastState extends State<Forecast> {
     return Scaffold(
       body: Column(
         children: <Widget>[
-          Container(
-            height: MediaQuery.of(context).size.height / 3,
-            width: MediaQuery.of(context).size.width,
-            color: Color.fromARGB(255, 0, 180, 126),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              // ignore: prefer_const_literals_to_create_immutables
-              children: <Widget>[
-                Padding(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: Text(
-                      mainCity
-                          .toString(), // != null ? city.toString() + "\u00B0C" : "Tampere",
-                      style: (TextStyle(
-                          color: Colors.white,
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.w600))),
-                ),
-                Text(temp != null ? temp.toString() + "\u00B0C" : "Loading",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24.0,
-                        fontWeight: FontWeight.w600)),
-                Padding(
-                  padding: EdgeInsets.only(top: 10),
-                  child: Text(
-                      currently != null ? currently.toString() : "Loading",
-                      style: (TextStyle(
-                          color: Colors.white,
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.w600))),
-                ),
-              ],
-            ),
-          ),
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.all(20.0),
-              child: ListView(
-                // ignore: prefer_const_literals_to_create_immutables
-                children: <Widget>[
-                  ListTile(
-                    leading: SizedBox(
-                      width: 30,
-                      child: Center(
-                        child: FaIcon(
-                          FontAwesomeIcons.thermometerHalf,
-                        ),
+            child: ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: entries.length,
+                itemBuilder: (BuildContext context, int index) {
+                  return Container(
+                    color: Colors.amber[colorCodes[index % 6]],
+                    child: Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Column(
+                            children: [
+                              Text(entries[index].date.toString()),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Text(entries[index].temp.toString()),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Text(entries[index].humidity.toString()),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Text(entries[index].wind.toString()),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Text(entries[index].weather.toString()),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Text(entries[index].icon.toString()),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    title: Text("Temperature"),
-                    trailing: Text(
-                        temp != null ? temp.toString() + "\u00B0C" : "Loading"),
-                  ),
-                  ListTile(
-                    leading: FaIcon(FontAwesomeIcons.cloud),
-                    title: Text("Weather"),
-                    trailing: Text(description != null
-                        ? description.toString()
-                        : "Loading"),
-                  ),
-                  ListTile(
-                    leading: FaIcon(FontAwesomeIcons.water),
-                    title: Text("Humidity"),
-                    trailing: Text(
-                        humidity != null ? humidity.toString() : "Loading"),
-                  ),
-                  ListTile(
-                    leading: FaIcon(FontAwesomeIcons.wind),
-                    title: Text("Wind"),
-                    trailing: Text(windSpeed != null
-                        ? windSpeed.toString() + " m/s"
-                        : "Loading"),
-                  ),
-                ],
-              ),
-            ),
+                  );
+                }),
           ),
           Padding(
             padding: EdgeInsets.only(bottom: 70.0, left: 25, right: 25),
@@ -239,8 +312,8 @@ class _ForecastState extends State<Forecast> {
                         onPressed: isButtonActive
                             ? () {
                                 setState(() => isButtonActive = false);
-                                getWeather(
-                                    _inputController.text, null, null, null);
+                                getWeather(_inputController.text, "metric",
+                                    null, null);
                               }
                             : null,
                       ),
