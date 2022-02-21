@@ -1,6 +1,5 @@
 // ignore_for_file: prefer_const_constructors, unnecessary_brace_in_string_interps
 
-import 'package:basic_weather_app/weather.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -21,16 +20,17 @@ class Weather extends StatefulWidget {
 
 extension StringExtension on String {
   String capitalizeText() {
-    return "${this[0].toUpperCase()}${this.substring(1).toLowerCase()}";
+    return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
   }
 }
 
 class _WeatherState extends State<Weather> {
-  var temp;
-  var description;
-  var currently;
-  var humidity;
-  var windSpeed;
+  var temp = 0.0;
+  var description = 'n/a';
+  var currently = 'n/a';
+  var humidity = 0;
+  var windSpeed = 0.0;
+  var icon = '01n';
   var mainCity = "tampere";
   late Position _currentPosition;
   late TextEditingController _inputController;
@@ -46,13 +46,6 @@ class _WeatherState extends State<Weather> {
     _inputController.addListener(() {
       final isButtonActive = _inputController.text.isNotEmpty;
       setState(() => this.isButtonActive = isButtonActive);
-    });
-  }
-
-  int _selectedIndex = 0;
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
     });
   }
 
@@ -100,7 +93,6 @@ class _WeatherState extends State<Weather> {
 
     final http.Response response = await http.get(url);
     final Map results = json.decode(response.body);
-
     if (response.statusCode == 200) {
       setState(() {
         if (_inputController.text.toString() == "") {
@@ -115,6 +107,7 @@ class _WeatherState extends State<Weather> {
         currently = results['weather'][0]['main'].toString().capitalizeText();
         humidity = results['main']['humidity'];
         windSpeed = results['wind']['speed'];
+        icon = results['weather'][0]['icon'];
         if (lat != null && lon != null) {
           mainCity = results['name'];
         }
@@ -129,6 +122,7 @@ class _WeatherState extends State<Weather> {
         currently = results['message'];
         humidity = 0;
         windSpeed = 0;
+        icon = '';
       });
     }
   }
@@ -148,34 +142,54 @@ class _WeatherState extends State<Weather> {
             height: MediaQuery.of(context).size.height / 3,
             width: MediaQuery.of(context).size.width,
             color: Color.fromARGB(255, 0, 180, 126),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              // ignore: prefer_const_literals_to_create_immutables
+            child: Row(
               children: <Widget>[
-                Padding(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: Text(
-                      mainCity
-                          .toString(), // != null ? city.toString() + "\u00B0C" : "Tampere",
-                      style: (TextStyle(
-                          color: Colors.white,
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.w600))),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Image.network(
+                        'https://openweathermap.org/img/wn/${icon.toString()}@4x.png',
+                      ),
+                    ],
+                  ),
                 ),
-                Text(temp != null ? temp.toString() + "\u00B0C" : "Loading",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24.0,
-                        fontWeight: FontWeight.w600)),
-                Padding(
-                  padding: EdgeInsets.only(top: 10),
-                  child: Text(
-                      currently != null ? currently.toString() : "Loading",
-                      style: (TextStyle(
-                          color: Colors.white,
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.w600))),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    // ignore: prefer_const_literals_to_create_immutables
+                    children: <Widget>[
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 10),
+                        child: Text(mainCity.toString(),
+                            style: (TextStyle(
+                                color: Colors.white,
+                                fontSize: 24.0,
+                                fontWeight: FontWeight.w600))),
+                      ),
+                      Text(
+                          temp != null
+                              ? temp.toString() + "\u00B0C"
+                              : "Loading",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16.0,
+                              fontWeight: FontWeight.w600)),
+                      Padding(
+                        padding: EdgeInsets.only(top: 10),
+                        child: Text(
+                            currently != null
+                                ? currently.toString()
+                                : "Loading",
+                            style: (TextStyle(
+                                color: Colors.white,
+                                fontSize: 16.0,
+                                fontWeight: FontWeight.w600))),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
