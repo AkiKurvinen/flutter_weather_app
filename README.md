@@ -7,7 +7,9 @@ API: openweathermap
 - Fetch weather data from API by city name
 - Use Geolocator to get local weather
 - Show City, Temperature, Description, Humidity and Wind speed
+- Get 5 day forecast
 
-## Error handling
+## Screenshots
 
-- Inform if city not found
+![Current weather](/screenshots/weather.jpg?raw=true 'Current weather')
+![Forecast](/screenshots/forecast.jpg?raw=true 'Forecast view')

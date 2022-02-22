@@ -95,7 +95,7 @@ class _ForecastState extends State<Forecast> {
     _currentPosition = await Geolocator.getCurrentPosition();
     String lat = _currentPosition.latitude.toString();
     String lon = _currentPosition.longitude.toString();
-    getWeather(null, "metric", lat, lon);
+    getWeather('', "metric", lat, lon);
 
     return _currentPosition;
   }
@@ -164,14 +164,7 @@ class _ForecastState extends State<Forecast> {
 
     if (response.statusCode == 200) {
       setState(() {
-        if (_inputController.text.toString() == "") {
-          mainCity = results['city']['name'].toString();
-        } else {
-          mainCity = _inputController.text.toString().capitalize();
-        }
-
-//   final List<WeatherObject> entries = [
-
+        mainCity = results['city']['name'].toString();
         try {
           List<dynamic> newEntries = results['list']
               .map((json) => WeatherObject.fromJson(json))
